@@ -1,0 +1,40 @@
+<%- include('../layout/header') %>
+
+<!-- Main Menu Section -->
+
+<section class="page-header">
+    <div class="container">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="content">
+                    <h1 class="page-name">Catalogue</h1>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="products section">
+    <div class="container">
+        <div class="row">
+            <% data.forEach((row) => { %>
+                <div class="col-md-4">
+                    <div class="product-item">
+                        <div class="product-thumb">
+                            <img class="img-responsive"
+                                src="<%= row.image %>"
+                                alt="<%= row.name %>" />
+                        </div>
+                        <div class="product-content">
+                            <h5><%= row._id %></h5>
+                            <h4><a href="/detail/<%= row._id %>"><%= row.name %></a></h4>
+                            <p class="price">Rp <%= row.price %></p>
+                        </div>
+                    </div>
+                </div>
+            <% }); %>
+        </div>
+    </div>
+</section>
+
+<%- include('../layout/footer') %>

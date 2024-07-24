@@ -1,0 +1,41 @@
+<%- include('../layout/header') %>
+
+<section class="single-product">
+	<div class="container">
+		<div class="row">
+			<div class="col-md-6">
+				<ol class="breadcrumb">
+					<h1 class="page-name">Detail Product <%= data.name %></h1>
+				</ol>
+			</div>
+		</div>
+		<div class="row mt-20">
+			<div class="col-md-5">
+				<div class="single-product-slider">
+					<div id='carousel-custom' class='carousel slide' data-ride='carousel'>
+						<div class='carousel-outer'>
+							<div class='carousel-inner '>
+								<div class='item active'>
+									<img src='/<%= data.image %>' alt='' data-zoom-image="images/shop/single-products/product-1.jpg" />
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div class="col-md-7">
+				<div class="single-product-details">
+					<p>#<%= data._id %></p>
+					<h2><%= data.name %></h2>
+					<p class="product-description mt-20">
+						<%= data.description %>
+					</p>
+					<p class="product-price">Rp <%= data.price %></p>
+                    <p>Stok: <%= data.stock %> <%= data.unit %></p>
+				</div>
+			</div>
+		</div>
+	</div>
+</section>
+
+<%- include('../layout/footer') %>

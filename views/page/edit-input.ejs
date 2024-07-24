@@ -1,0 +1,61 @@
+<%- include('../layout/header') %>
+
+<section class="page-header">
+	<div class="container">
+		<div class="row">
+			<div class="col-md-12">
+				<div class="content">
+					<h1 class="page-name">Dinamika E-Catalogue</h1>
+				</div>
+			</div>
+		</div>
+	</div>
+</section>
+<div class="page-wrapper">
+   <div class="checkout shopping">
+      <div class="container">
+         <div class="row">
+            <div class="col-md-12">
+               <div class="block billing-details">
+                  <form action="/admin/update/<%= data._id %>" class="checkout-form" method="POST" enctype="multipart/form-data">
+                     <!-- <div class="form-group">
+                        <label for="id">ID</label>
+                        <input type="text" class="form-control" id="id" placeholder="">
+                     </div> -->
+                     <div class="form-group">
+                        <label for="name">Nama Item</label>
+                        <input type="text" class="form-control" id="name" value="<%= data.name %>" name="name" placeholder="">
+                     </div>
+                     <div class="form-group">
+                         <label for="description">Deskripsi</label>
+                         <textarea name="description" id="" cols="162" name="description" rows="5"> <%= data.description %></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="price">Harga Eceran</label>
+                        <input type="text" class="form-control" id="price" name="price" value="<%= data.price %>" placeholder="">
+                    </div>
+                    <div class="form-group">
+                        <label for="unit">Satuan</label>
+                        <input type="text" class="form-control" id="unit" name="unit" value="<%= data.unit %>" placeholder="">
+                    </div>
+                    <div class="form-group">
+                        <label for="stock">Stok</label> 
+                        <input type="text" class="form-control" id="stock" name="stock" value="<%= data.stock %>" placeholder="">
+                    </div>
+                    <img src="/<%= data.image %>" width="100" class="m-5" alt="">
+                    <div class="form-group">
+                       <label for="image">Foto</label>
+                       <input type="hidden" name="old_image" value="<%= data.image %>" >
+                       <input type="file" class="form-control" id="image" name="image" placeholder="">
+                     </div>
+                    <button type="submit" class="btn btn-main mt-20">Simpan</button>
+                    <a class="btn btn-secondary mt-20">Batal</a>
+                  </form>
+               </div>
+            </div>
+         </div>
+      </div>
+   </div>
+</div>
+
+<%- include('../layout/footer') %>

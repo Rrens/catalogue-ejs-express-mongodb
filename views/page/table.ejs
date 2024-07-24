@@ -1,0 +1,47 @@
+<%- include('../layout/header') %>
+
+<div class="page-wrapper">
+    <div class="cart shopping">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-8 col-md-offset-2">
+                    <div class="block">
+                        <div class="product-list">
+                            <form method="post">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th class="">ID</th>
+                                            <th class="">Nama Item</th>
+                                            <th class="">Harga Ec</th>
+                                            <th class="">Satuan</th>
+                                            <th class="">Stok</th>
+                                            <th class="">Aksi</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <% data.forEach((row) => { %>
+                                            <tr class="">
+                                                <td><%= row._id %></td>
+                                                <td><%= row.name %></td>
+                                                <td><%= row.price %></td>
+                                                <td><%= row.unit %></td>
+                                                <td><%= row.stock %></td>
+                                                <td class="">
+                                                    <a class="product-edit" href="/admin/edit/<%= row._id %>" style="color: rgb(207, 207, 19);">Edit</a> | 
+                                                    <a class="product-remove" href="/admin/delete/<%= row._id %>">Remove</a>
+                                                </td>
+                                            </tr>
+                                        <% }); %>
+                                    </tbody>
+                                </table>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<%- include('../layout/footer') %>
