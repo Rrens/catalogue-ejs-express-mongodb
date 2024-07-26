@@ -4,7 +4,15 @@ const mongoose = require('mongoose')
 const session = require('express-session')
 const multer = require('multer')
 const Product = require('./models/product')
+const jwt = require('jsonwebtoken');
+const bodyParser = require('body-parser');
+const nodemailer = require('nodemailer');
+const crypto = require('crypto');
+const { body, validationResult } = require('express-validator');
+const path = require('path');
 const fs = require('fs')
+const User = require('./models/users')
+const cookieParser = require('cookie-parser');
 
 const app = express()
 const port = process.env.PORT || 4000
@@ -25,6 +33,7 @@ mongoose.connect(process.env.DB_URL, {
 app.use(express.urlencoded({ extended: false }))
 app.use(express.json())
 app.use(express.static('uploads'))
+app.use(cookieParser());
 
 app.use(session({
     secret: 'secret key',
@@ -39,6 +48,151 @@ app.use((req, res, next) => {
 })
 
 app.set('view engine', 'ejs')
+
+// AUTHENTICATION
+// Validation Middleware
+const registerValidation = [
+    body('email').isEmail().withMessage('Invalid email'),
+    body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
+];
+
+const loginValidation = [
+    body('email').isEmail().withMessage('Invalid email'),
+    body('password').not().isEmpty().withMessage('Password is required'),
+];
+
+const validate = (req, res, next) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+    }
+    next();
+};
+
+app.post('/register', registerValidation, validate, async (req, res) => {
+    const { email, password } = req.body;
+    try {
+        let user = await User.findOne({ email });
+        if (user) {
+            return res.status(400).json({ msg: 'User already exists' });
+        }
+        user = new User({ email, password });
+        await user.save();
+        const payload = { user: { id: user.id } };
+        jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: 3600 }, (err, token) => {
+            if (err) throw err;
+            // res.json({ token });
+            res.redirect('/login');
+        });
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server error');
+    }
+});
+
+app.post('/login', loginValidation, validate, async (req, res) => {
+    const { email, password } = req.body;
+    try {
+        let user = await User.findOne({ email });
+        if (!user) {
+            return res.status(400).json({ msg: 'Invalid credentials' });
+        }
+        const isMatch = await user.comparePassword(password);
+        if (!isMatch) {
+            return res.status(400).json({ msg: 'Invalid credentials' });
+        }
+
+        const payload = { user: { id: user.id } };
+        // console.log(payload)
+
+        jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: 3600 }, (err, token) => {
+            if (err) throw err;
+            res.json({ token });
+        });
+
+        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+
+        res.cookie('token', token, { httpOnly: true, maxAge: 3600000 }); // 1 jam
+        res.redirect('/admin/list');
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server error');
+    }
+});
+
+app.get('/forgot-password', (req, res) => {
+    res.render('page/forgot-password', { title: 'Forgot Password' });
+});
+
+app.post('/forgot-password', async (req, res) => {
+    const { email } = req.body;
+    try {
+        const user = await User.findOne({ email });
+        if (!user) {
+            return res.status(400).json({ msg: 'User not found' });
+        }
+
+        const token = crypto.randomBytes(20).toString('hex');
+        user.resetPasswordToken = token;
+        user.resetPasswordExpires = Date.now() + 3600000; // 1 hour
+        await user.save();
+
+        // Kirim token dalam respon JSON
+        res.status(200).json({ msg: 'Token generated', token: token });
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server error');
+    }
+});
+
+app.get('/reset/:token', async (req, res) => {
+    try {
+        const user = await User.findOne({
+            resetPasswordToken: req.params.token,
+            resetPasswordExpires: { $gt: Date.now() },
+        });
+        if (!user) {
+            return res.status(400).json({ msg: 'Password reset token is invalid or has expired' });
+        }
+        res.render('page/reset-password', { token: req.params.token });
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server error');
+    }
+});
+
+app.post('/reset/:token', async (req, res) => {
+    try {
+        const user = await User.findOne({
+            resetPasswordToken: req.params.token,
+            resetPasswordExpires: { $gt: Date.now() },
+        });
+        if (!user) {
+            return res.status(400).json({ msg: 'Password reset token is invalid or has expired' });
+        }
+        user.password = req.body.password;
+        user.resetPasswordToken = undefined;
+        user.resetPasswordExpires = undefined;
+        await user.save();
+        res.status(200).json({ msg: 'Password has been reset' });
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server error');
+    }
+});
+
+app.get('/login', (req, res) => {
+    res.render('page/login', { title: 'Login' })
+})
+
+app.get('/register', (req, res) => {
+    res.render('page/register', { title: 'Login' })
+})
+
+app.get('/logout', (req, res) => {
+    res.cookie('token', '')
+    res.redirect('/login')
+})
 
 // app.use("/", require("./routes/route"))
 app.get('/', async (req, res) => {
@@ -61,6 +215,37 @@ let storage = multer.diskStorage({
 });
 
 let upload = multer({ storage: storage }).single('image');
+
+const authenticate = async (req, res, next) => {
+    console.log(req.cookies.token)
+    try {
+        // Ambil token dari header Authorization
+        const token = req.cookies.token
+
+        if (!token) {
+            return res.status(401).json({ msg: 'No token, authorization denied' });
+        }
+
+        // Verifikasi token
+        const decoded = jwt.verify(token, process.env.JWT_SECRET); // JWT_SECRET diatur dalam environment variables
+        const user = await User.findById(decoded.id);
+
+        if (!user) {
+            return res.status(401).json({ msg: 'User not found' });
+        }
+
+        req.user = user; // Simpan pengguna ke objek request
+        next(); // Lanjutkan ke rute berikutnya
+    } catch (err) {
+        console.error(err);
+        res.status(401).json({ msg: 'Token is not valid' });
+    }
+};
+
+app.use('/admin', authenticate, async (req, res, next) => {
+
+    next();
+});
 
 // INSERT Product Into Database
 app.post('/admin/add', upload, async (req, res) => {
@@ -140,7 +325,6 @@ app.post('/admin/update/:id', upload, async (req, res) => {
 })
 
 // DELETE PRODUCT
-
 app.get('/admin/delete/:id', async (req, res) => {
     let id = req.params.id;
 
@@ -173,7 +357,6 @@ app.get('/admin/delete/:id', async (req, res) => {
 
 
 // ADD DATA
-
 app.get('/admin/add-data', (req, res) => {
     res.render('page/input', { title: 'Input' })
 })
@@ -199,10 +382,6 @@ app.get('/detail/:id', async (req, res) => {
     } catch (error) {
         res.redirect('/')
     }
-})
-
-app.get('/login', (req, res) => {
-    res.render('page/login', { title: 'Login' })
 })
 
 
